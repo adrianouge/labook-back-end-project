@@ -1,23 +1,17 @@
 import { Request, Response } from "express";
+import { PostsBusiness } from "../business/PostsBusiness";
 import { PostsDatabase } from "../database/PostsDatabase";
 import { Post } from "../models/Post";
 
 export class PostsController {
-// +: to implement 
-
-//  + validate query
+   
     public getAllPosts = async (req: Request, res: Response) => {
         try {
-            let postDatabase = new PostsDatabase()
-            let allPosts: Post[] = await postDatabase.getAllPosts()
+            const q = req.query.q as string
+            const postsBusiness = new PostsBusiness()
+            const posts = await postsBusiness.getPosts(q)
 
-            let mappedPosts = allPosts.map((post) => new Post(
-                post.id,
-                post.creator_id,
-                post.content
-            ))
-
-            res.status(200).send(mappedPosts)
+            res.status(200).send(posts)
         }
 
         catch (error) {
@@ -31,28 +25,18 @@ export class PostsController {
         }
     }
 
-//  + validate body 
     public createNewPost = async (req: Request, res: Response) => {
 
         try {
-            const { id, creator_id, content } = req.body
+            const input = {
+                id: req.body.id,
+                creator_id: req.body.creator_id,
+                content: req.body.content
+            }
+            const postsBusiness = new PostsBusiness()
+            const createNewPost = await postsBusiness.createNewPost(input)
 
-            const postsDatabase = new PostsDatabase()
-            const [checkId] = await postsDatabase.getPost(id)
-            console.log(checkId)
-            if (!checkId) {
-                const newPost = new Post(
-                    id,
-                    creator_id,
-                    content
-                )
-                postsDatabase.createPost(newPost)
-                res.status(200).send("Posted successfully.")
-            }
-            else {
-                res.status(400)
-                throw new Error("There's already a post with this 'id'.")
-            }
+            res.status(201).send(createNewPost)
         }
 
         catch (error) {
@@ -66,29 +50,13 @@ export class PostsController {
         }
     }
 
-// + validate new content
     public editPost = async (req: Request, res: Response) => {
         try {
-            const id = req.params.id
-            const { newContent } = req.body
+            const input = { id: req.params.id, newContent: req.body.newContent }
+            const postsBusiness = new PostsBusiness()
+            const editPost = await postsBusiness.editPost(input)
 
-            const postDatabase = new PostsDatabase()
-            const [postToEdit] = await postDatabase.getPost(id)
-
-            if (postToEdit) {
-                let editedPost = new Post(
-                    postToEdit.id,
-                    postToEdit.creator_id,
-                    newContent
-                )
-                postDatabase.editPost(editedPost)
-                res.status(200).send("Post edited successfully.")
-            }
-
-            else {
-                res.status(400)
-                throw new Error("There are no posts with inserted 'id'.")
-            }
+            res.status(200).send(editPost)
         }
 
         catch (error) {
@@ -105,17 +73,12 @@ export class PostsController {
     public deletePost = async (req: Request, res: Response) => {
         try {
             const id = req.params.id
-            const postDatabase = new PostsDatabase()
+            const postsBusiness = new PostsBusiness()
+            const deletePost = postsBusiness.deletePost(id)
 
-            const postToDelete = await postDatabase.getPost(id)
-            if (postToDelete) {
-                await postDatabase.deletePost(id)
-            }
-            else {
-                res.status(400)
-                throw new Error("There are no posts with inserted 'id'.")
-            }
+            res.status(200).send(deletePost)
         }
+
         catch (error) {
             console.log(error)
 
