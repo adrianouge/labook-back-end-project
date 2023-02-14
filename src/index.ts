@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import { PostsController } from './controllers/PostsController'
+import { postsRouter } from './routers/postsRouter';
+import { usersRouter } from './routers/usersRouter';
+
 const app = express()
 
 app.use(express.json())
@@ -10,10 +12,5 @@ app.listen(3003, () => {
     console.log(`Server running on port ${3003}`)
 })
 
-//POSTS QUERIES
-const postsController = new PostsController()
-
-app.get('/posts', postsController.getAllPosts)
-app.post('/posts', postsController.createNewPost)
-app.put('/posts/:id', postsController.editPost)
-app.delete('/posts/:id', postsController.deletePost)
+app.use('/posts', postsRouter)
+app.use('/users', usersRouter)

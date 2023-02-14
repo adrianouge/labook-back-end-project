@@ -33,3 +33,9 @@ CREATE TABLE
 
 INSERT INTO users(id, name, email, password, role)
 VALUES("u001", "Adriano", "adriano@email.com", "senhaDoAdriano", "normal");
+
+DROP TABLE users;
+
+DROP TABLE posts;
+
+DROP TABLE likes_dislikes;

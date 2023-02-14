@@ -1,17 +1,21 @@
 import { Request, Response } from "express";
 import { PostsBusiness } from "../business/PostsBusiness";
-import { PostsDatabase } from "../database/PostsDatabase";
-import { Post } from "../models/Post";
+import { PostsDTO } from "../dtos/PostsDTO";
 
 export class PostsController {
-   
-    public getAllPosts = async (req: Request, res: Response) => {
-        try {
-            const q = req.query.q as string
-            const postsBusiness = new PostsBusiness()
-            const posts = await postsBusiness.getPosts(q)
 
-            res.status(200).send(posts)
+    constructor(
+        private postsBusiness: PostsBusiness,
+        private postsDTO: PostsDTO
+    ) { }
+
+    public getPosts = async (req: Request, res: Response) => {
+
+        try {
+            const q = req.query.q as string | undefined
+            const output = await this.postsBusiness.getPosts(q)
+
+            res.status(200).send(output)
         }
 
         catch (error) {
@@ -28,15 +32,12 @@ export class PostsController {
     public createNewPost = async (req: Request, res: Response) => {
 
         try {
-            const input = {
-                id: req.body.id,
-                creator_id: req.body.creator_id,
-                content: req.body.content
-            }
-            const postsBusiness = new PostsBusiness()
-            const createNewPost = await postsBusiness.createNewPost(input)
+            const { id, creator_id, content } = req.body
 
-            res.status(201).send(createNewPost)
+            const checkedTypesPostTBC = this.postsDTO.createNewPostInput(id, creator_id, content)
+            const createPostSuccessful = await this.postsBusiness.createNewPost(checkedTypesPostTBC)
+
+            res.status(201).send(createPostSuccessful)
         }
 
         catch (error) {
@@ -52,11 +53,12 @@ export class PostsController {
 
     public editPost = async (req: Request, res: Response) => {
         try {
-            const input = { id: req.params.id, newContent: req.body.newContent }
-            const postsBusiness = new PostsBusiness()
-            const editPost = await postsBusiness.editPost(input)
+            const postToBeEditedID = req.params.id
+            const newContent = req.body.newContent
+            const checkedInfoToEdit = this.postsDTO.editPostInput(postToBeEditedID, newContent)
+            const editPostSuccessful = await this.postsBusiness.editPost(checkedInfoToEdit)
 
-            res.status(200).send(editPost)
+            res.status(200).send(editPostSuccessful)
         }
 
         catch (error) {
@@ -73,10 +75,10 @@ export class PostsController {
     public deletePost = async (req: Request, res: Response) => {
         try {
             const id = req.params.id
-            const postsBusiness = new PostsBusiness()
-            const deletePost = postsBusiness.deletePost(id)
+            const checkedTypeId = this.postsDTO.deletePostInput(id)
+            const deletePostSuccessful = await this.postsBusiness.deletePost(checkedTypeId)
 
-            res.status(200).send(deletePost)
+            res.status(200).send(deletePostSuccessful)
         }
 
         catch (error) {

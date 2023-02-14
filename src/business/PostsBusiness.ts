@@ -1,81 +1,98 @@
 import { PostsDatabase } from "../database/PostsDatabase"
 import { Post } from "../models/Post"
+import { BadRequestError } from "../errors/BadRequestError"
+import { NotFoundError } from "../errors/NotFoundError"
+import { CreateNewPostInput, DeletePostInput, EditPostInput, PostsDTO } from "../dtos/PostsDTO"
+import { postDB } from "../types"
 
 export class PostsBusiness {
-     // +: to implement 
 
-    //  + validate query
+    constructor(
+        private postsDatabase: PostsDatabase,
+        private postsDTO: PostsDTO
+    ) { }
+
     public getPosts = async (q: string | undefined) => {
+        const posts = await this.postsDatabase.getPosts(q)
 
-        const postDatabase = new PostsDatabase()
-        const posts: Post[] = await postDatabase.getAllPosts(q)
+        if (!posts) {
+            throw new NotFoundError(`There are no posts with content including '${q}'.`)
+        }
 
-        let mappedPosts = posts.map((post) => new Post(
+        const mappedPosts: Post[] = posts.map((post) => new Post(
             post.id,
             post.creator_id,
-            post.content
+            post.content,
+            post.created_at,
+            post.updated_at
         ))
 
-        if (q !== undefined && posts === undefined) {
-            throw new Error(`There are no posts with content including ${q}`)
-        }
-        return mappedPosts
+        const output = this.postsDTO.getPostsOutput(mappedPosts)
+        return output
     }
 
-    // + validate body
-    public createNewPost = async (input: any) => {
-        let { id, creator_id, content } = input
+    public createNewPost = async (checkedTypesPostTBC: CreateNewPostInput) => {
+        let { id, creator_id, content } = checkedTypesPostTBC
 
-        const postsDatabase = new PostsDatabase()
+        const [checkId] = await this.postsDatabase.getPost(id)
 
-        const [checkId] = await postsDatabase.getPost(id)
-
-        if (!checkId) {
-            const newPost = new Post(
-                id,
-                creator_id,
-                content
-            )
-            postsDatabase.createPost(newPost)
-            return ({ message: "Post created successfully.", newPost })
+        if (checkId) {
+            throw new BadRequestError("There's already a post with this 'id'.")
         }
-        else {
-            throw new Error("There's already a post with this 'id'.")
+
+        const date: string = new Date().toISOString()
+        const newPost: postDB = {
+            id,
+            creator_id,
+            content,
+            created_at: date,
+            updated_at: date
         }
+
+        await this.postsDatabase.createPost(newPost)
+
+        const createdPost = newPost
+        const output = this.postsDTO.createNewPostOutput(createdPost)
+        return output
     }
 
-    // + validate body
-    public editPost = async (input: any) => {
-        const { id, newContent } = input
-        const postDatabase = new PostsDatabase()
-        const [postToEdit] = await postDatabase.getPost(id)
+    public editPost = async (checkedInfoToEdit: EditPostInput) => {
 
-        if (postToEdit) {
-            let editedPost = new Post(
-                postToEdit.id,
-                postToEdit.creator_id,
-                newContent
-            )
-            postDatabase.editPost(editedPost)
-            return ({ message: `Post updated successfully.`, editedPost })
+        const { postToBeEditedID, newContent } = checkedInfoToEdit
+
+        const [foundPostToEdit] = await this.postsDatabase.getPost(postToBeEditedID)
+
+        if (!foundPostToEdit) {
+            throw new NotFoundError("There are no posts with inserted 'id'.")
         }
 
-        else {
+        let editedPost = new Post(
+            foundPostToEdit.id,
+            foundPostToEdit.creator_id,
+            foundPostToEdit.content,
+            foundPostToEdit.created_at,
+            foundPostToEdit.updated_at
+        )
+        editedPost.setContent(newContent)
+        editedPost.setUpdatedAt(new Date().toISOString())
+        await this.postsDatabase.editPost(editedPost)
+
+        const output = this.postsDTO.editPostOutput(editedPost)
+        return output
+    }
+
+    public deletePost = async (checkedTypeId: DeletePostInput) => {
+        const { id } = checkedTypeId
+        const [postToDelete] = await this.postsDatabase.getPost(id)
+
+        if (!postToDelete) {
             throw new Error("There are no posts with inserted 'id'.")
         }
-    }
 
-    // validate id
-    public deletePost = async (id: string) => {
+        await this.postsDatabase.deletePost(id)
+        const postDeleted: postDB = postToDelete
 
-        const postDatabase = new PostsDatabase()
-        const postToDelete = await postDatabase.getPost(id)
-        if (postToDelete) {
-            await postDatabase.deletePost(id)
-            return ({ message: `Post deleted successfully.`, postToDelete })
-        }
-        else {
-            throw new Error("There are no posts with inserted 'id'.")
-        }
+        const output = this.postsDTO.deletePostOutput(postDeleted)
+        return output
     }
 }
