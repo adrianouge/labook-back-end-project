@@ -10,13 +10,17 @@ export class User {
     ) { }
 
     public getName() {
-        return this.id
+        return this.name
     }
 
     public getEmail() {
         return this.email
     }
 
+    public setName(newName: string) {
+        this.name = newName
+    }
+    
     public setEmail(newEmail:string) {
         this.email = newEmail
     }

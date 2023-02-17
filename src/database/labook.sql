@@ -32,4 +32,10 @@ CREATE TABLE
     );
 
 INSERT INTO users(id, name, email, password, role)
-VALUES("u001", "Adriano", "adriano@email.com", "senhaDoAdriano", "normal")
+VALUES("u001", "Adriano", "adriano@email.com", "adriano'sPassword", "ADMIN");
+
+DROP TABLE users;
+
+DROP TABLE posts;
+
+DROP TABLE likes_dislikes;

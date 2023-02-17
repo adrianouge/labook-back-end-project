@@ -1,19 +1,20 @@
 import express from 'express';
 import cors from 'cors';
-import { PostsController } from './controllers/PostsController'
+import dotenv from 'dotenv'
+
+import { postsRouter } from './routers/postsRouter';
+import { usersRouter } from './routers/usersRouter';
+
+dotenv.config()
+
 const app = express()
 
 app.use(express.json())
 app.use(cors())
 
-app.listen(3003, () => {
-    console.log(`Server running on port ${3003}`)
+app.listen(Number(process.env.PORT), () => {
+    console.log(`Server running on port ${Number(process.env.PORT)}`)
 })
 
-//POSTS QUERIES
-const postsController = new PostsController()
-
-app.get('/posts', postsController.getAllPosts)
-app.post('/posts', postsController.createNewPost)
-app.put('/posts/:id', postsController.editPost)
-app.delete('/posts/:id', postsController.deletePost)
+app.use('/posts', postsRouter)
+app.use('/users', usersRouter)

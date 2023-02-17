@@ -1,23 +1,21 @@
 import { Request, Response } from "express";
-import { PostsDatabase } from "../database/PostsDatabase";
-import { Post } from "../models/Post";
+import { PostsBusiness } from "../business/PostsBusiness";
+import { PostsDTO } from "../dtos/PostsDTO";
 
 export class PostsController {
-// +: to implement 
 
-//  + validate query
-    public getAllPosts = async (req: Request, res: Response) => {
+    constructor(
+        private postsBusiness: PostsBusiness,
+        private postsDTO: PostsDTO
+    ) { }
+
+    public getPosts = async (req: Request, res: Response) => {
+
         try {
-            let postDatabase = new PostsDatabase()
-            let allPosts: Post[] = await postDatabase.getAllPosts()
+            const q = req.query.q as string | undefined
+            const output = await this.postsBusiness.getPosts(q)
 
-            let mappedPosts = allPosts.map((post) => new Post(
-                post.id,
-                post.creator_id,
-                post.content
-            ))
-
-            res.status(200).send(mappedPosts)
+            res.status(200).send(output)
         }
 
         catch (error) {
@@ -31,28 +29,16 @@ export class PostsController {
         }
     }
 
-//  + validate body 
     public createNewPost = async (req: Request, res: Response) => {
 
         try {
-            const { id, creator_id, content } = req.body
+            const { content } = req.body
+            const token = req.headers.authorization
+            
+            const checkedTypesPostTBC = this.postsDTO.createNewPostInput(content, token)
+            const createPostSuccessful = await this.postsBusiness.createNewPost(checkedTypesPostTBC)
 
-            const postsDatabase = new PostsDatabase()
-            const [checkId] = await postsDatabase.getPost(id)
-            console.log(checkId)
-            if (!checkId) {
-                const newPost = new Post(
-                    id,
-                    creator_id,
-                    content
-                )
-                postsDatabase.createPost(newPost)
-                res.status(200).send("Posted successfully.")
-            }
-            else {
-                res.status(400)
-                throw new Error("There's already a post with this 'id'.")
-            }
+            res.status(201).send(createPostSuccessful)
         }
 
         catch (error) {
@@ -66,30 +52,35 @@ export class PostsController {
         }
     }
 
-// + validate new content
     public editPost = async (req: Request, res: Response) => {
         try {
-            const id = req.params.id
-            const { newContent } = req.body
+            const postToBeEditedID = req.params.id
+            const newContent = req.body.newContent
+            const checkedInfoToEdit = this.postsDTO.editPostInput(postToBeEditedID, newContent)
+            const editPostSuccessful = await this.postsBusiness.editPost(checkedInfoToEdit)
 
-            const postDatabase = new PostsDatabase()
-            const [postToEdit] = await postDatabase.getPost(id)
-
-            if (postToEdit) {
-                let editedPost = new Post(
-                    postToEdit.id,
-                    postToEdit.creator_id,
-                    newContent
-                )
-                postDatabase.editPost(editedPost)
-                res.status(200).send("Post edited successfully.")
-            }
-
-            else {
-                res.status(400)
-                throw new Error("There are no posts with inserted 'id'.")
-            }
+            res.status(200).send(editPostSuccessful)
         }
+
+        catch (error) {
+            console.log(error)
+
+            if (res.statusCode === 200) { res.status(500) }
+
+            if (error instanceof Error) { res.send(error.message) }
+
+            else { res.send("Unexpected error occured.") }
+        }
+    }
+
+    public likeDislikePost = async (req: Request, res: Response) => {
+        try {  
+            const postId = req.params.id
+            const userToken = req.headers.authorization
+            const input = this.postsDTO.likeOrDislikePostInput(postId, userToken)
+            const output = await this.postsBusiness.likeOrDislikePost(input)
+            res.status(200).send(output)
+         }
 
         catch (error) {
             console.log(error)
@@ -105,17 +96,12 @@ export class PostsController {
     public deletePost = async (req: Request, res: Response) => {
         try {
             const id = req.params.id
-            const postDatabase = new PostsDatabase()
+            const checkedTypeId = this.postsDTO.deletePostInput(id)
+            const deletePostSuccessful = await this.postsBusiness.deletePost(checkedTypeId)
 
-            const postToDelete = await postDatabase.getPost(id)
-            if (postToDelete) {
-                await postDatabase.deletePost(id)
-            }
-            else {
-                res.status(400)
-                throw new Error("There are no posts with inserted 'id'.")
-            }
+            res.status(200).send(deletePostSuccessful)
         }
+
         catch (error) {
             console.log(error)
 
