@@ -1,6 +1,10 @@
 import { BadRequestError } from "../errors/BadRequestError";
-import { User } from "../models/User";
 import { userDB } from "../types";
+import { User } from "../models/User";
+export interface GetUsersOutput {
+    message: string,
+    users: User[]
+}
 
 export interface CreateNewUserInput {
     userToCreate: {
@@ -11,9 +15,9 @@ export interface CreateNewUserInput {
         role: string
     }
 }
-
 export interface CreateNewUserOutput {
     message: string,
+    token: string,
     createdUser: {
         id: string,
         name: string,
@@ -28,21 +32,26 @@ export interface LoginUserInput {
     email: string,
     password: string
 }
-
 export interface LoginUserOutput {
     message: string,
+    token: string,
     user: {
-        id: string,
         name: string,
         email: string,
-        password: string,
         role: string
     }
 }
 
 export class UsersDTO {
+    public getUsersOutput(users: User[]): GetUsersOutput {
+        const dto: GetUsersOutput = {
+            message: "Here are the users:",
+            users
+        }
+        return dto
+    }
     public createNewUserInput(
-        id: unknown,
+        id: string,
         name: unknown,
         email: unknown,
         password: unknown,
@@ -67,9 +76,10 @@ export class UsersDTO {
         const dto: CreateNewUserInput = { userToCreate: { id, name, email, password, role } }
         return dto
     }
-    public createNewUserOutput(createdUser: userDB): CreateNewUserOutput {
+    public createNewUserOutput(createdUser: userDB, token: string): CreateNewUserOutput {
         const dto: CreateNewUserOutput = {
             message: "New user created successfully.",
+            token: token,
             createdUser: {
                 id: createdUser.id,
                 name: createdUser.name,
@@ -94,14 +104,13 @@ export class UsersDTO {
         const dto: LoginUserInput = { email, password }
         return dto
     }
-    public loginUserOutput(loggedUser: userDB): LoginUserOutput {
+    public loginUserOutput(loggedUser: userDB, token: string): LoginUserOutput {
         const dto: LoginUserOutput = {
             message: "Login successful.",
+            token: token,
             user: {
-                id: loggedUser.id,
                 name: loggedUser.name,
                 email: loggedUser.email,
-                password: loggedUser.password,
                 role: loggedUser.role
             }
         }

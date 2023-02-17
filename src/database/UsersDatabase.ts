@@ -38,9 +38,9 @@ export class UsersDatabase extends BaseDatabase {
         await this.dbConnection(UsersDatabase.TABLE_USERS).insert(userToCreate)
     }
 
-    public async loginUser(email: string, password: string) {
+    public async checkEmail(email: string) {
         const user = await this.dbConnection(UsersDatabase.TABLE_USERS)
-            .where({ email, password })
+            .where({ email })
         return user
     }
 }

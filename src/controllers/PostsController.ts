@@ -32,9 +32,10 @@ export class PostsController {
     public createNewPost = async (req: Request, res: Response) => {
 
         try {
-            const { id, creator_id, content } = req.body
-
-            const checkedTypesPostTBC = this.postsDTO.createNewPostInput(id, creator_id, content)
+            const { content } = req.body
+            const token = req.headers.authorization
+            
+            const checkedTypesPostTBC = this.postsDTO.createNewPostInput(content, token)
             const createPostSuccessful = await this.postsBusiness.createNewPost(checkedTypesPostTBC)
 
             res.status(201).send(createPostSuccessful)
@@ -60,6 +61,26 @@ export class PostsController {
 
             res.status(200).send(editPostSuccessful)
         }
+
+        catch (error) {
+            console.log(error)
+
+            if (res.statusCode === 200) { res.status(500) }
+
+            if (error instanceof Error) { res.send(error.message) }
+
+            else { res.send("Unexpected error occured.") }
+        }
+    }
+
+    public likeDislikePost = async (req: Request, res: Response) => {
+        try {  
+            const postId = req.params.id
+            const userToken = req.headers.authorization
+            const input = this.postsDTO.likeOrDislikePostInput(postId, userToken)
+            const output = await this.postsBusiness.likeOrDislikePost(input)
+            res.status(200).send(output)
+         }
 
         catch (error) {
             console.log(error)

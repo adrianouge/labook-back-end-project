@@ -2,15 +2,143 @@ import { PostsDatabase } from "../database/PostsDatabase"
 import { Post } from "../models/Post"
 import { BadRequestError } from "../errors/BadRequestError"
 import { NotFoundError } from "../errors/NotFoundError"
-import { CreateNewPostInput, DeletePostInput, EditPostInput, PostsDTO } from "../dtos/PostsDTO"
-import { postDB } from "../types"
+import { CreateNewPostInput, DeletePostInput, EditPostInput, LikeOrDislikePostInput, PostsDTO } from "../dtos/PostsDTO"
+import { likedOrDislikedPostDB, postDB } from "../types"
+import { TokenManager } from "../services/TokenManager"
+import { IdGenerator } from "../services/IdGenerator"
 
 export class PostsBusiness {
 
     constructor(
         private postsDatabase: PostsDatabase,
-        private postsDTO: PostsDTO
+        private postsDTO: PostsDTO,
+        private tokenManager: TokenManager,
+        private idGenerator: IdGenerator
     ) { }
+
+    public createNewPost = async (checkedTypesPostTBC: CreateNewPostInput) => {
+
+        let { content, token } = checkedTypesPostTBC
+
+        const payload = this.tokenManager.getPayload(token)
+        if (!payload) {
+            throw new BadRequestError("Invalid token.")
+        }
+
+        const [checkId] = await this.postsDatabase.getPost(payload.id)
+
+        if (checkId) {
+            throw new BadRequestError("There's already a post with this 'id'.")
+        }
+        const id = this.idGenerator.generate()
+
+        const date: string = new Date().toISOString()
+        const newPost: postDB = {
+            id,
+            creator_id: payload.id,
+            content,
+            likes: 0,
+            dislikes: 0,
+            created_at: date,
+            updated_at: date
+        }
+
+        await this.postsDatabase.createPost(newPost)
+
+        const createdPost = newPost
+        const output = this.postsDTO.createNewPostOutput(createdPost)
+        return output
+    }
+
+    public likeOrDislikePost = async (likeOrDislikePostInput: LikeOrDislikePostInput) => {
+
+        const { postId, userToken } = likeOrDislikePostInput
+        const [postToLikeOrDislike] = await this.postsDatabase.getPost(postId)
+        const userLikingOrDisliking = this.tokenManager.getPayload(userToken)
+
+        if (!postToLikeOrDislike) {
+            throw new NotFoundError("Post not found with inserted 'id'.")
+        }
+
+        if (userLikingOrDisliking === null) {
+            throw new BadRequestError("Invalid token.")
+        }
+
+        const [postToCheckLike] = await this.postsDatabase.getPostToCheckLike(postId, userLikingOrDisliking.id)
+        console.log(postToCheckLike)
+        if (!postToCheckLike) {
+
+            const userId = userLikingOrDisliking.id
+            const likedPost: likedOrDislikedPostDB = {
+                user_id: userId,
+                post_id: postId,
+                like: 1
+            }
+
+            const postWithLikeUpdated: postDB = {
+                id: postToLikeOrDislike.id,
+                creator_id: postToLikeOrDislike.creator_id,
+                content: postToLikeOrDislike.content,
+                likes: postToLikeOrDislike.likes += 1,
+                dislikes: postToLikeOrDislike.dislikes,
+                created_at: postToLikeOrDislike.created_at,
+                updated_at: postToLikeOrDislike.updated_at
+            }
+
+            await this.postsDatabase.createLikePost(likedPost, postWithLikeUpdated)
+            const userThatLiked = userLikingOrDisliking.name
+            const output = this.postsDTO.likePostOutput(postWithLikeUpdated, userThatLiked)
+            return output
+        }
+
+        else {
+            if (postToCheckLike.like === 1) {
+                const userId = userLikingOrDisliking.id
+                const dislikedPost: likedOrDislikedPostDB = {
+                    user_id: userId,
+                    post_id: postId,
+                    like: 0
+                }
+                const postDislikedUpdated: postDB = {
+                    id: postToLikeOrDislike.id,
+                    creator_id: postToLikeOrDislike.creator_id,
+                    content: postToLikeOrDislike.content,
+                    likes: postToLikeOrDislike.likes -= 1,
+                    dislikes: postToLikeOrDislike.dislikes,
+                    created_at: postToLikeOrDislike.created_at,
+                    updated_at: postToLikeOrDislike.updated_at
+                }
+                await this.postsDatabase.dislikePost(dislikedPost, postDislikedUpdated)
+                const userThatDisliked = userLikingOrDisliking.name
+                const output = this.postsDTO.dislikePostOutput(postDislikedUpdated, userThatDisliked)
+                return output
+            }
+
+            if(postToCheckLike.like === 0) {
+            const userId = userLikingOrDisliking.id
+            const likedPost: likedOrDislikedPostDB = {
+                user_id: userId,
+                post_id: postId,
+                like: 1
+            }
+
+            const postWithLikeUpdated: postDB = {
+                id: postToLikeOrDislike.id,
+                creator_id: postToLikeOrDislike.creator_id,
+                content: postToLikeOrDislike.content,
+                likes: postToLikeOrDislike.likes += 1,
+                dislikes: postToLikeOrDislike.dislikes,
+                created_at: postToLikeOrDislike.created_at,
+                updated_at: postToLikeOrDislike.updated_at
+            }
+
+            await this.postsDatabase.likePost(likedPost, postWithLikeUpdated)
+            const userThatLiked = userLikingOrDisliking.name
+            const output = this.postsDTO.likePostOutput(postWithLikeUpdated, userThatLiked)
+            return output
+            }
+        }
+    }
 
     public getPosts = async (q: string | undefined) => {
         const posts = await this.postsDatabase.getPosts(q)
@@ -31,30 +159,6 @@ export class PostsBusiness {
         return output
     }
 
-    public createNewPost = async (checkedTypesPostTBC: CreateNewPostInput) => {
-        let { id, creator_id, content } = checkedTypesPostTBC
-
-        const [checkId] = await this.postsDatabase.getPost(id)
-
-        if (checkId) {
-            throw new BadRequestError("There's already a post with this 'id'.")
-        }
-
-        const date: string = new Date().toISOString()
-        const newPost: postDB = {
-            id,
-            creator_id,
-            content,
-            created_at: date,
-            updated_at: date
-        }
-
-        await this.postsDatabase.createPost(newPost)
-
-        const createdPost = newPost
-        const output = this.postsDTO.createNewPostOutput(createdPost)
-        return output
-    }
 
     public editPost = async (checkedInfoToEdit: EditPostInput) => {
 
