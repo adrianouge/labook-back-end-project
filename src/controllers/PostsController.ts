@@ -54,9 +54,10 @@ export class PostsController {
 
     public editPost = async (req: Request, res: Response) => {
         try {
+            const token = req.headers.authorization
             const postToBeEditedID = req.params.id
             const newContent = req.body.newContent
-            const checkedInfoToEdit = this.postsDTO.editPostInput(postToBeEditedID, newContent)
+            const checkedInfoToEdit = this.postsDTO.editPostInput(token, postToBeEditedID, newContent)
             const editPostSuccessful = await this.postsBusiness.editPost(checkedInfoToEdit)
 
             res.status(200).send(editPostSuccessful)
@@ -96,8 +97,10 @@ export class PostsController {
     public deletePost = async (req: Request, res: Response) => {
         try {
             const id = req.params.id
-            const checkedTypeId = this.postsDTO.deletePostInput(id)
-            const deletePostSuccessful = await this.postsBusiness.deletePost(checkedTypeId)
+            const token = req.headers.authorization
+
+            const input = this.postsDTO.deletePostInput(id, token)
+            const deletePostSuccessful = await this.postsBusiness.deletePost(input)
 
             res.status(200).send(deletePostSuccessful)
         }
