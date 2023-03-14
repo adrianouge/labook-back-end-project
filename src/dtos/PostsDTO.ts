@@ -25,6 +25,7 @@ export interface CreateNewPostOutput {
 
 
 export interface EditPostInput {
+    token: string,
     postToBeEditedID: string,
     newContent: string
 }
@@ -55,7 +56,8 @@ export interface DislikePostOutput {
 }
 
 export interface DeletePostInput {
-    id: string
+    id: string,
+    token: string
 }
 
 export interface DeletePostOutput {
@@ -105,13 +107,14 @@ export class PostsDTO {
     }
 
 
-    public editPostInput(postToBeEditedID: unknown, newContent: unknown) {
+    public editPostInput(token: unknown, postToBeEditedID: unknown, newContent: unknown) {
 
-        if (typeof postToBeEditedID !== "string" || typeof newContent !== "string") {
-            throw new BadRequestError("Post's 'id' and 'newContent' must be string type.")
+        if (typeof postToBeEditedID !== "string" || typeof newContent !== "string" || typeof token !== "string") {
+            throw new BadRequestError("'token', post's 'id' and 'newContent' must be string type.")
         }
 
         const dto: EditPostInput = {
+            token,
             postToBeEditedID,
             newContent
         }
@@ -163,12 +166,15 @@ export class PostsDTO {
     }
 
 
-    public deletePostInput(id: unknown) {
+    public deletePostInput(id: unknown, token: unknown) {
         if (typeof id !== "string") {
             throw new BadRequestError("'id' to delete post must be string type.")
         }
 
-        const dto: DeletePostInput = { id }
+        if (typeof token !== "string") {
+            throw new BadRequestError("'token' to delete post must be string type.")
+        }
+        const dto: DeletePostInput = { id, token }
         return dto
     }
 

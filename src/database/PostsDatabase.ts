@@ -39,18 +39,18 @@ export class PostsDatabase extends BaseDatabase {
     public async getPosts(q: string | undefined) {
         if (!q) {
             let foundPosts: Post[] = await this.dbConnection(PostsDatabase.TABLE_POSTS)
-                .leftOuterJoin(PostsDatabase.TABLE_USERS,
-                    "posts.creator_id", "=", "users.id"
+                .leftJoin(PostsDatabase.TABLE_USERS,
+                    "posts.creator_id", "users.id"
                 )
             return foundPosts
         }
 
         else {
-            let allPostsWithContentLike: Post[] = await this.dbConnection(PostsDatabase.TABLE_POSTS)
+            let foundPosts: Post[] = await this.dbConnection(PostsDatabase.TABLE_POSTS)
                 .leftJoin(PostsDatabase.TABLE_USERS,
-                    "creator_id", "=", "users.id"
+                    "posts.creator_id", "users.id"
                 ).where({ content: `%${q}%` })
-            return allPostsWithContentLike
+            return foundPosts
         }
     }
 

@@ -6,6 +6,7 @@ import { CreateNewPostInput, DeletePostInput, EditPostInput, LikeOrDislikePostIn
 import { likedOrDislikedPostDB, postDB } from "../types"
 import { TokenManager } from "../services/TokenManager"
 import { IdGenerator } from "../services/IdGenerator"
+import { UnauthorizedError } from "../errors/UnauthorizedError"
 
 export class PostsBusiness {
 
@@ -162,7 +163,13 @@ export class PostsBusiness {
 
     public editPost = async (checkedInfoToEdit: EditPostInput) => {
 
-        const { postToBeEditedID, newContent } = checkedInfoToEdit
+        const { token, postToBeEditedID, newContent } = checkedInfoToEdit
+
+        const payload = this.tokenManager.getPayload(token)
+
+        if (!payload) {
+            throw new BadRequestError("Invalid token.")
+        }
 
         const [foundPostToEdit] = await this.postsDatabase.getPost(postToBeEditedID)
 
@@ -170,6 +177,10 @@ export class PostsBusiness {
             throw new NotFoundError("There are no posts with inserted 'id'.")
         }
 
+        if(payload.id !== foundPostToEdit.creator_id) {
+            throw new UnauthorizedError("You must be the creator of the post to edit it.")
+        }
+        
         let editedPost = new Post(
             foundPostToEdit.id,
             foundPostToEdit.creator_id,
@@ -185,14 +196,23 @@ export class PostsBusiness {
         return output
     }
 
-    public deletePost = async (checkedTypeId: DeletePostInput) => {
-        const { id } = checkedTypeId
+    public deletePost = async (deletePostInput: DeletePostInput) => {
+        const { id, token } = deletePostInput
         const [postToDelete] = await this.postsDatabase.getPost(id)
+        const userTryingToDelete = this.tokenManager.getPayload(token)
 
         if (!postToDelete) {
-            throw new Error("There are no posts with inserted 'id'.")
+            throw new NotFoundError("There are no posts with inserted 'id'.")
         }
 
+
+        if(userTryingToDelete === null) {
+            throw new BadRequestError("Invalid token.")
+        }
+
+        if(userTryingToDelete.id !== postToDelete.creator_id) {
+            throw new UnauthorizedError("You must be the creator of the post to delete it.")
+        }
         await this.postsDatabase.deletePost(id)
         const postDeleted: postDB = postToDelete
 
